@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, LogIn, UserPlus, LogOut, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -14,6 +16,21 @@ const navLinks = [
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { session, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  const handleDashboard = () => {
+    if (session.userRole === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/client");
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
@@ -46,14 +63,45 @@ export const Navbar = () => {
             ))}
           </div>
 
-          {/* CTA Button */}
-          <div className="hidden lg:block">
-            <Link
-              to="/cities"
-              className="inline-flex items-center justify-center px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-colors"
-            >
-              Explore Cities
-            </Link>
+          {/* Auth Buttons */}
+          <div className="hidden lg:flex items-center gap-3">
+            {session.isLoggedIn ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDashboard}
+                  className="flex items-center gap-2"
+                >
+                  <User size={16} />
+                  Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                    <LogIn size={16} />
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm" className="flex items-center gap-2 bg-primary hover:bg-primary/90">
+                    <UserPlus size={16} />
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,13 +140,60 @@ export const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                to="/cities"
-                onClick={() => setIsOpen(false)}
-                className="block w-full py-3 px-4 bg-primary text-primary-foreground font-semibold rounded-lg text-center mt-4"
-              >
-                Explore Cities
-              </Link>
+              {/* Mobile Auth Buttons */}
+              <div className="pt-4 border-t border-border mt-4 space-y-2">
+                {session.isLoggedIn ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        handleDashboard();
+                      }}
+                      className="block w-full py-3 px-4 bg-muted text-foreground font-semibold rounded-lg text-center"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <User size={16} />
+                        Dashboard
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        handleLogout();
+                      }}
+                      className="block w-full py-3 px-4 bg-destructive/10 text-destructive font-semibold rounded-lg text-center"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <LogOut size={16} />
+                        Logout
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setIsOpen(false)}
+                      className="block w-full py-3 px-4 bg-muted text-foreground font-semibold rounded-lg text-center"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <LogIn size={16} />
+                        Login
+                      </span>
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setIsOpen(false)}
+                      className="block w-full py-3 px-4 bg-primary text-primary-foreground font-semibold rounded-lg text-center"
+                    >
+                      <span className="flex items-center justify-center gap-2">
+                        <UserPlus size={16} />
+                        Sign Up
+                      </span>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
