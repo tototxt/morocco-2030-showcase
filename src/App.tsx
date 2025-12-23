@@ -3,8 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SupabaseAuthProvider } from "@/hooks/useSupabaseAuth";
 import Index from "./pages/Index";
 import Cities from "./pages/Cities";
 import Stadiums from "./pages/Stadiums";
@@ -14,6 +13,10 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import AdminDashboard from "./pages/AdminDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
+import TicketStore from "./pages/TicketStore";
+import SeatSelection from "./pages/SeatSelection";
+import Checkout from "./pages/Checkout";
+import MyTickets from "./pages/MyTickets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,7 +24,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
+      <SupabaseAuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -33,27 +36,16 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/client"
-              element={
-                <ProtectedRoute allowedRole="client">
-                  <ClientDashboard />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/client" element={<ClientDashboard />} />
+            <Route path="/tickets" element={<TicketStore />} />
+            <Route path="/tickets/select/:matchId" element={<SeatSelection />} />
+            <Route path="/tickets/checkout" element={<Checkout />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
+      </SupabaseAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
