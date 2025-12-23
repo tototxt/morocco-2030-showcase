@@ -14,16 +14,256 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          available_seats: number
+          away_team: string
+          city: string
+          created_at: string
+          home_team: string
+          id: string
+          match_date: string
+          stadium: string
+          stage: string
+          total_seats: number
+        }
+        Insert: {
+          available_seats?: number
+          away_team: string
+          city: string
+          created_at?: string
+          home_team: string
+          id?: string
+          match_date: string
+          stadium: string
+          stage?: string
+          total_seats?: number
+        }
+        Update: {
+          available_seats?: number
+          away_team?: string
+          city?: string
+          created_at?: string
+          home_team?: string
+          id?: string
+          match_date?: string
+          stadium?: string
+          stage?: string
+          total_seats?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          block: string
+          category_name: string
+          created_at: string
+          holder_email: string
+          holder_name: string
+          id: string
+          match_id: string
+          payment_method: string
+          payment_status: string
+          price: number
+          row_number: string
+          seat_id: string
+          seat_number: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          block: string
+          category_name: string
+          created_at?: string
+          holder_email: string
+          holder_name: string
+          id?: string
+          match_id: string
+          payment_method: string
+          payment_status?: string
+          price: number
+          row_number: string
+          seat_id: string
+          seat_number: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          block?: string
+          category_name?: string
+          created_at?: string
+          holder_email?: string
+          holder_name?: string
+          id?: string
+          match_id?: string
+          payment_method?: string
+          payment_status?: string
+          price?: number
+          row_number?: string
+          seat_id?: string
+          seat_number?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seats: {
+        Row: {
+          block: string
+          category_id: string
+          created_at: string
+          id: string
+          match_id: string
+          price: number
+          reserved_by: string | null
+          reserved_until: string | null
+          row_number: string
+          seat_number: string
+          status: string
+        }
+        Insert: {
+          block: string
+          category_id: string
+          created_at?: string
+          id?: string
+          match_id: string
+          price: number
+          reserved_by?: string | null
+          reserved_until?: string | null
+          row_number: string
+          seat_number: string
+          status?: string
+        }
+        Update: {
+          block?: string
+          category_id?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+          price?: number
+          reserved_by?: string | null
+          reserved_until?: string | null
+          row_number?: string
+          seat_number?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seats_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_categories: {
+        Row: {
+          color: string
+          description: string | null
+          id: string
+          max_price: number
+          min_price: number
+          name: string
+        }
+        Insert: {
+          color?: string
+          description?: string | null
+          id?: string
+          max_price: number
+          min_price: number
+          name: string
+        }
+        Update: {
+          color?: string
+          description?: string | null
+          id?: string
+          max_price?: number
+          min_price?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_ticket_count: { Args: { _user_id: string }; Returns: number }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +390,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
