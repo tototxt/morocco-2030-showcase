@@ -165,6 +165,13 @@ const Index = () => {
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <Link
+                to="/tickets"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-morocco-gold text-foreground font-semibold rounded-full hover:bg-morocco-gold/90 transition-all"
+              >
+                Buy Tickets
+                <ArrowRight size={18} />
+              </Link>
+              <Link
                 to="/stadiums"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-full hover:bg-primary/90 transition-all"
               >
