@@ -14,13 +14,21 @@ import { toast } from "sonner";
 
 const TicketStore = () => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useSupabaseAuth();
+  const { user, isLoading: authLoading, isAdmin } = useSupabaseAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [cityFilter, setCityFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
+
+  // Redirect admins - they can't purchase tickets
+  useEffect(() => {
+    if (!authLoading && isAdmin) {
+      toast.error("Administrators cannot purchase tickets");
+      navigate("/admin");
+    }
+  }, [isAdmin, authLoading, navigate]);
 
   useEffect(() => {
     if (!authLoading && !user) {

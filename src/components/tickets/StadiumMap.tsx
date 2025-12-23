@@ -8,6 +8,7 @@ interface StadiumMapProps {
   selectedSeats: Seat[];
   onSeatSelect: (seat: Seat) => void;
   maxSelectable: number;
+  selectedCategory?: string | null;
 }
 
 export const StadiumMap = ({
@@ -16,6 +17,7 @@ export const StadiumMap = ({
   selectedSeats,
   onSeatSelect,
   maxSelectable,
+  selectedCategory,
 }: StadiumMapProps) => {
   // Group seats by block for stadium layout
   const blocks = ["A", "B", "C", "D", "E", "F"];
@@ -106,9 +108,20 @@ export const StadiumMap = ({
 
             const hasSelectedSeats = blockSeats.some((s) => isSeatSelected(s.id));
             const avgColor = blockSeats.length > 0 ? getCategoryColor(blockSeats[0].category_id) : "#22c55e";
+            const blockCategoryId = blockSeats.length > 0 ? blockSeats[0].category_id : null;
+            const isHighlighted = selectedCategory && blockCategoryId === selectedCategory;
+            const isDimmed = selectedCategory && blockCategoryId !== selectedCategory;
+
+            // Handle block click - select first available seat
+            const handleBlockClick = () => {
+              const availableSeat = blockSeats.find((s) => s.status === "available" && !isSeatSelected(s.id));
+              if (availableSeat && selectedSeats.length < maxSelectable) {
+                onSeatSelect(availableSeat);
+              }
+            };
 
             return (
-              <g key={block}>
+              <g key={block} onClick={handleBlockClick} style={{ cursor: blockSeats.length > 0 && availability > 0 ? "pointer" : "default" }}>
                 <motion.rect
                   x={x}
                   y={y}
@@ -116,11 +129,14 @@ export const StadiumMap = ({
                   height={height}
                   rx="8"
                   fill={avgColor}
-                  opacity={availability > 50 ? 0.7 : availability > 20 ? 0.5 : 0.3}
-                  stroke={hasSelectedSeats ? "#fbbf24" : "none"}
-                  strokeWidth={hasSelectedSeats ? 3 : 0}
-                  whileHover={{ opacity: 1, scale: 1.02 }}
-                  style={{ cursor: blockSeats.length > 0 ? "pointer" : "default" }}
+                  opacity={isDimmed ? 0.2 : isHighlighted ? 1 : availability > 50 ? 0.7 : availability > 20 ? 0.5 : 0.3}
+                  stroke={hasSelectedSeats ? "#fbbf24" : isHighlighted ? "#fff" : "none"}
+                  strokeWidth={hasSelectedSeats ? 3 : isHighlighted ? 2 : 0}
+                  whileHover={{ opacity: isDimmed ? 0.3 : 1, scale: 1.02 }}
+                  animate={{ 
+                    opacity: isDimmed ? 0.2 : isHighlighted ? 1 : availability > 50 ? 0.7 : availability > 20 ? 0.5 : 0.3,
+                    scale: isHighlighted ? 1.02 : 1
+                  }}
                 />
                 {blockSeats.length > 0 && (
                   <>
@@ -132,6 +148,7 @@ export const StadiumMap = ({
                       fill="#fff"
                       fontSize="10"
                       fontWeight="bold"
+                      opacity={isDimmed ? 0.3 : 1}
                     >
                       {lowestPrice ? `${lowestPrice} MAD` : "SOLD"}
                     </text>
@@ -142,7 +159,7 @@ export const StadiumMap = ({
                       textAnchor="middle"
                       fill="#fff"
                       fontSize="8"
-                      opacity="0.8"
+                      opacity={isDimmed ? 0.3 : 0.8}
                     >
                       {getCategoryName(blockSeats[0].category_id).toUpperCase()}
                     </text>

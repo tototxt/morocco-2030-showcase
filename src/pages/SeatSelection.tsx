@@ -1,25 +1,24 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { StadiumMap } from "@/components/tickets/StadiumMap";
 import { CategoryLegend } from "@/components/tickets/CategoryLegend";
 import { CartSummary } from "@/components/tickets/CartSummary";
-import { Button } from "@/components/ui/button";
+import { MatchHeader } from "@/components/tickets/MatchHeader";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Match, TicketCategory, Seat, CartItem } from "@/types/tickets";
 import { toast } from "sonner";
-import { format } from "date-fns";
 
 const MAX_TICKETS_PER_USER = 4;
 
 const SeatSelection = () => {
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useSupabaseAuth();
+  const { user, isLoading: authLoading, isAdmin } = useSupabaseAuth();
 
   const [match, setMatch] = useState<Match | null>(null);
   const [categories, setCategories] = useState<TicketCategory[]>([]);
@@ -28,6 +27,15 @@ const SeatSelection = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [userTicketCount, setUserTicketCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Redirect admins - they can't purchase tickets
+  useEffect(() => {
+    if (!authLoading && isAdmin) {
+      toast.error("Administrators cannot purchase tickets");
+      navigate("/admin");
+    }
+  }, [isAdmin, authLoading, navigate]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -37,7 +45,7 @@ const SeatSelection = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!matchId || !user) return;
+      if (!matchId || !user || isAdmin) return;
 
       // Fetch match
       const { data: matchData, error: matchError } = await supabase
@@ -90,7 +98,7 @@ const SeatSelection = () => {
     };
 
     fetchData();
-  }, [matchId, user, navigate]);
+  }, [matchId, user, navigate, isAdmin]);
 
   const generateSampleSeats = async (matchId: string, categories: TicketCategory[]) => {
     if (categories.length === 0) return;
@@ -168,6 +176,15 @@ const SeatSelection = () => {
     navigate("/tickets/checkout");
   };
 
+  const handleCategorySelect = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+  };
+
+  // Filter seats by selected category
+  const filteredSeats = selectedCategory 
+    ? seats.filter((s) => s.category_id === selectedCategory)
+    : seats;
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -190,37 +207,8 @@ const SeatSelection = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Header */}
-      <section className="pt-24 pb-8 bg-gradient-morocco">
-        <div className="container mx-auto px-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/tickets")}
-            className="text-white hover:bg-white/10 mb-4"
-          >
-            <ArrowLeft size={20} className="mr-2" />
-            Back to Matches
-          </Button>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-white"
-          >
-            <div className="flex items-center gap-4 mb-2">
-              <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                {match.stage}
-              </span>
-            </div>
-            <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
-              {match.home_team} vs {match.away_team}
-            </h1>
-            <p className="opacity-90">
-              {format(new Date(match.match_date), "EEEE, MMMM d, yyyy 'at' HH:mm")} • {match.stadium}, {match.city}
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      {/* Match Header with Stadium Background */}
+      <MatchHeader match={match} />
 
       {/* Ticket Limit Warning */}
       {remainingAllowance < MAX_TICKETS_PER_USER && (
@@ -243,13 +231,18 @@ const SeatSelection = () => {
             {/* Stadium Map & Categories */}
             <div className="lg:col-span-2 space-y-6">
               <StadiumMap
-                seats={seats}
+                seats={filteredSeats}
                 categories={categories}
                 selectedSeats={selectedSeats}
                 onSeatSelect={handleSeatSelect}
                 maxSelectable={remainingAllowance}
+                selectedCategory={selectedCategory}
               />
-              <CategoryLegend categories={categories} />
+              <CategoryLegend 
+                categories={categories} 
+                selectedCategory={selectedCategory}
+                onCategorySelect={handleCategorySelect}
+              />
             </div>
 
             {/* Cart Sidebar */}
