@@ -1,19 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LogOut,
   Users,
   Search,
-  Trash2,
-  Info,
   Shield,
   Mail,
   User,
-  Lock,
   Calendar,
+  Ticket,
+  DollarSign,
 } from "lucide-react";
-import { useAuth, User as UserType } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,49 +24,110 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
+
+interface Profile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+interface PurchaseWithDetails {
+  id: string;
+  ticket_id: string;
+  holder_name: string;
+  holder_email: string;
+  category_name: string;
+  block: string;
+  row_number: string;
+  seat_number: string;
+  price: number;
+  payment_method: string;
+  payment_status: string;
+  created_at: string;
+  matches: {
+    home_team: string;
+    away_team: string;
+    match_date: string;
+    stadium: string;
+  } | null;
+}
 
 const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showSessionDialog, setShowSessionDialog] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { session, users, logout, clearAllUsers, getSessionData } = useAuth();
+  const { user, isAdmin, signOut, isLoading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  useEffect(() => {
+    if (!authLoading && (!user || !isAdmin)) {
+      navigate("/login");
+    }
+  }, [user, isAdmin, authLoading, navigate]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !isAdmin) return;
+
+      // Fetch profiles
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      setProfiles(profileData || []);
+
+      // Fetch all purchases (admin can see all)
+      const { data: purchaseData } = await supabase
+        .from("purchases")
+        .select("*, matches(home_team, away_team, match_date, stadium)")
+        .order("created_at", { ascending: false });
+      
+      setPurchases(purchaseData || []);
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [user, isAdmin]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
-  const handleClearUsers = () => {
-    clearAllUsers();
-    toast({
-      title: "Users Cleared",
-      description: "All client accounts have been removed. Only the master admin remains.",
-    });
-  };
-
-  const handleShowSession = () => {
-    setShowSessionDialog(true);
-  };
-
-  // Filter only client users and apply search
-  const clientUsers = users.filter(
-    (user) =>
-      user.role === "client" &&
-      (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.fullName.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Filter profiles by search
+  const filteredProfiles = profiles.filter(
+    (profile) =>
+      (profile.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const sessionData = getSessionData();
+  // Filter purchases by search
+  const filteredPurchases = purchases.filter(
+    (purchase) =>
+      purchase.holder_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.holder_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.ticket_id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalRevenue = purchases.reduce((sum, p) => sum + p.price, 0);
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -87,7 +148,7 @@ const AdminDashboard = () => {
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{session.email}</span>
+                <span className="text-muted-foreground">{user?.email}</span>
               </div>
               <Button
                 variant="outline"
@@ -111,15 +172,15 @@ const AdminDashboard = () => {
           className="mb-8"
         >
           <h1 className="font-display text-3xl font-bold mb-2">
-            Welcome, <span className="text-primary">{session.fullName}</span>
+            Admin <span className="text-primary">Dashboard</span>
           </h1>
           <p className="text-muted-foreground">
-            Manage registered clients and system data from this dashboard.
+            Manage users, view ticket purchases, and monitor sales.
           </p>
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -131,8 +192,8 @@ const AdminDashboard = () => {
                 <Users className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{clientUsers.length}</p>
-                <p className="text-sm text-muted-foreground">Registered Clients</p>
+                <p className="text-2xl font-bold">{profiles.length}</p>
+                <p className="text-sm text-muted-foreground">Registered Users</p>
               </div>
             </div>
           </motion.div>
@@ -145,13 +206,11 @@ const AdminDashboard = () => {
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-secondary" />
+                <Ticket className="w-6 h-6 text-secondary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {users.filter((u) => u.role === "admin").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Admin Accounts</p>
+                <p className="text-2xl font-bold">{purchases.length}</p>
+                <p className="text-sm text-muted-foreground">Tickets Sold</p>
               </div>
             </div>
           </motion.div>
@@ -164,7 +223,24 @@ const AdminDashboard = () => {
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-morocco-gold/10 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-morocco-gold" />
+                <DollarSign className="w-6 h-6 text-morocco-gold" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalRevenue.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total Revenue (MAD)</p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-card border border-border rounded-xl p-6"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-destructive/10 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-destructive" />
               </div>
               <div>
                 <p className="text-2xl font-bold">2030</p>
@@ -174,139 +250,176 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
 
-        {/* Client Table Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-card border border-border rounded-xl overflow-hidden"
-        >
-          <div className="p-6 border-b border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="font-display text-xl font-bold">Registered Clients</h2>
-              
-              {/* Search */}
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+        {/* Tabs */}
+        <Tabs defaultValue="purchases" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="purchases">Ticket Purchases</TabsTrigger>
+            <TabsTrigger value="users">Registered Users</TabsTrigger>
+          </TabsList>
+
+          {/* Search */}
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <User size={14} />
-                      Full Name
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} />
-                      Email
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <Lock size={14} />
-                      Password
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} />
-                      Registered
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clientUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <Users size={40} className="opacity-50" />
-                        <p>No clients registered yet</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  clientUsers.map((user, index) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{user.fullName}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <code className="bg-muted px-2 py-1 rounded text-sm">
-                          {user.password}
-                        </code>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </motion.div>
-
-        {/* Test Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 p-6 bg-muted/50 border border-border rounded-xl"
-        >
-          <h3 className="font-display text-lg font-bold mb-4">Test Actions</h3>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="destructive"
-              onClick={handleClearUsers}
-              className="flex items-center gap-2"
+          {/* Purchases Tab */}
+          <TabsContent value="purchases">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-xl overflow-hidden"
             >
-              <Trash2 size={16} />
-              Clear All Users
-            </Button>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticket ID</TableHead>
+                      <TableHead>Match</TableHead>
+                      <TableHead>Holder</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Seat</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPurchases.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-12">
+                          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                            <Ticket size={40} className="opacity-50" />
+                            <p>No purchases found</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredPurchases.map((purchase) => (
+                        <TableRow key={purchase.id}>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                              {purchase.ticket_id}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            {purchase.matches ? (
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {purchase.matches.home_team} vs {purchase.matches.away_team}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {purchase.matches.stadium}
+                                </p>
+                              </div>
+                            ) : (
+                              "N/A"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-sm">{purchase.holder_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {purchase.holder_email}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
+                              {purchase.category_name}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            Block {purchase.block}, Row {purchase.row_number}, Seat{" "}
+                            {purchase.seat_number}
+                          </TableCell>
+                          <TableCell className="font-bold">
+                            {purchase.price} MAD
+                          </TableCell>
+                          <TableCell>
+                            <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded capitalize">
+                              {purchase.payment_status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {format(new Date(purchase.created_at), "MMM d, yyyy")}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </motion.div>
+          </TabsContent>
 
-            <Dialog open={showSessionDialog} onOpenChange={setShowSessionDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={handleShowSession}
-                  className="flex items-center gap-2"
-                >
-                  <Info size={16} />
-                  Show Session Data
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Current Session Data</DialogTitle>
-                  <DialogDescription>
-                    This shows the authentication session stored in localStorage
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="bg-muted rounded-lg p-4 mt-4">
-                  <pre className="text-sm overflow-x-auto">
-                    {JSON.stringify(sessionData, null, 2)}
-                  </pre>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </motion.div>
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-xl overflow-hidden"
+            >
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">#</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <User size={14} />
+                          Full Name
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Mail size={14} />
+                          Email
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} />
+                          Registered
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProfiles.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-12">
+                          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                            <Users size={40} className="opacity-50" />
+                            <p>No users found</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredProfiles.map((profile, index) => (
+                        <TableRow key={profile.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell className="font-medium">
+                            {profile.full_name || "N/A"}
+                          </TableCell>
+                          <TableCell>{profile.email || "N/A"}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {format(new Date(profile.created_at), "MMM d, yyyy")}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </motion.div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

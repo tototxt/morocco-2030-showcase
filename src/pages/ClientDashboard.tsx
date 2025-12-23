@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -8,48 +8,45 @@ import {
   Trophy,
   MapPin,
   Building,
-  Trash2,
-  Info,
+  Ticket,
   ArrowRight,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
 
 const ClientDashboard = () => {
-  const [showSessionDialog, setShowSessionDialog] = useState(false);
-  
-  const { session, logout, clearAllUsers, getSessionData } = useAuth();
+  const { user, signOut, isLoading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
-  const handleClearUsers = () => {
-    clearAllUsers();
-    toast({
-      title: "Users Cleared",
-      description: "All user data has been reset.",
-    });
-  };
-
-  const sessionData = getSessionData();
-
   const quickLinks = [
+    { icon: Ticket, label: "Buy Tickets", href: "/tickets", color: "bg-morocco-gold/10 text-morocco-gold" },
     { icon: MapPin, label: "Explore Cities", href: "/cities", color: "bg-primary/10 text-primary" },
     { icon: Building, label: "View Stadiums", href: "/stadiums", color: "bg-secondary/10 text-secondary" },
-    { icon: Trophy, label: "About 2030", href: "/about", color: "bg-morocco-gold/10 text-morocco-gold" },
+    { icon: Trophy, label: "About 2030", href: "/about", color: "bg-destructive/10 text-destructive" },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +67,7 @@ const ClientDashboard = () => {
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 text-sm">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{session.email}</span>
+                <span className="text-muted-foreground">{user?.email}</span>
               </div>
               <Button
                 variant="outline"
@@ -97,7 +94,7 @@ const ClientDashboard = () => {
             <User className="w-12 h-12 text-primary" />
           </div>
           <h1 className="font-display text-4xl font-bold mb-4">
-            Welcome, <span className="text-gradient-morocco">{session.fullName}</span>!
+            Welcome, <span className="text-gradient-morocco">{user?.email?.split("@")[0]}</span>!
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             You're now part of the Morocco 2030 World Cup community. Explore the host cities, 
@@ -115,17 +112,10 @@ const ClientDashboard = () => {
           <h2 className="font-display text-xl font-bold mb-4">Your Account</h2>
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              <User className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Full Name</p>
-                <p className="font-medium">{session.fullName}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
               <Mail className="w-5 h-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">Email</p>
-                <p className="font-medium">{session.email}</p>
+                <p className="font-medium">{user?.email}</p>
               </div>
             </div>
           </div>
@@ -141,7 +131,7 @@ const ClientDashboard = () => {
           <h2 className="font-display text-2xl font-bold text-center mb-8">
             Explore Morocco 2030
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {quickLinks.map((link, index) => (
               <motion.div
                 key={link.label}
@@ -158,59 +148,12 @@ const ClientDashboard = () => {
                   </div>
                   <h3 className="font-display text-lg font-bold mb-2">{link.label}</h3>
                   <div className="flex items-center gap-2 text-primary text-sm font-medium group-hover:gap-3 transition-all">
-                    Discover
+                    Explore
                     <ArrowRight size={16} />
                   </div>
                 </Link>
               </motion.div>
             ))}
-          </div>
-        </motion.div>
-
-        {/* Test Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="max-w-md mx-auto p-6 bg-muted/50 border border-border rounded-xl"
-        >
-          <h3 className="font-display text-lg font-bold mb-4">Test Actions</h3>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleClearUsers}
-              className="flex items-center gap-2"
-            >
-              <Trash2 size={16} />
-              Clear All Users
-            </Button>
-
-            <Dialog open={showSessionDialog} onOpenChange={setShowSessionDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Info size={16} />
-                  Show Session Data
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Current Session Data</DialogTitle>
-                  <DialogDescription>
-                    This shows the authentication session stored in localStorage
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="bg-muted rounded-lg p-4 mt-4">
-                  <pre className="text-sm overflow-x-auto">
-                    {JSON.stringify(sessionData, null, 2)}
-                  </pre>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
         </motion.div>
       </main>
