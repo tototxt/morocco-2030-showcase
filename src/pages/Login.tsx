@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn, Mail, Lock, AlertCircle, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,31 +13,30 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { signIn, user, isAdmin, isLoading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      const from = (location.state as any)?.from || (isAdmin ? "/admin" : "/tickets");
+      navigate(from);
+    }
+  }, [user, isAdmin, authLoading, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const { error: signInError } = await signIn(email, password);
 
-    const result = login(email, password);
-
-    if (result.success) {
-      // Redirect based on role
-      if (email.toLowerCase().endsWith("@admin2030.com")) {
-        navigate("/admin");
-      } else {
-        navigate("/client");
-      }
-    } else {
-      setError(result.error || "Invalid credentials");
+    if (signInError) {
+      setError(signInError.message || "Invalid credentials");
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
+    // Navigation handled by useEffect when user state changes
   };
 
   return (
@@ -147,15 +146,11 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Test Credentials */}
+          {/* Info */}
           <div className="mt-8 pt-6 border-t border-border">
             <p className="text-xs text-muted-foreground text-center mb-3">
-              Test Admin Account
+              Admin accounts use @admin2030.com email domain
             </p>
-            <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
-              <p><span className="text-muted-foreground">Email:</span> <code className="text-primary">master@admin2030.com</code></p>
-              <p><span className="text-muted-foreground">Password:</span> <code className="text-primary">admin123</code></p>
-            </div>
           </div>
         </div>
       </motion.div>

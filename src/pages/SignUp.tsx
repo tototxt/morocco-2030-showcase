@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserPlus, Mail, Lock, User, AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const SignUp = () => {
   const [fullName, setFullName] = useState("");
@@ -15,8 +16,15 @@ const SignUp = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signUp } = useAuth();
+  const { signUp, user, isLoading: authLoading } = useSupabaseAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/tickets");
+    }
+  }, [user, authLoading, navigate]);
 
   const validateForm = (): string | null => {
     if (fullName.length < 2) {
@@ -49,18 +57,15 @@ const SignUp = () => {
 
     setIsLoading(true);
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const { error: signUpError } = await signUp(email, password, fullName);
 
-    const result = signUp(fullName, email, password);
-
-    if (result.success) {
-      navigate("/login", { state: { registered: true } });
+    if (signUpError) {
+      setError(signUpError.message || "Sign up failed");
+      setIsLoading(false);
     } else {
-      setError(result.error || "Sign up failed");
+      toast.success("Account created successfully! You are now logged in.");
+      // Auto-login happens via Supabase, navigation handled by useEffect
     }
-
-    setIsLoading(false);
   };
 
   return (

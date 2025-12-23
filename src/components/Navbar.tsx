@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogIn, UserPlus, LogOut, User } from "lucide-react";
+import { Menu, X, LogIn, UserPlus, LogOut, User, Ticket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/cities", label: "Cities" },
   { href: "/stadiums", label: "Stadiums" },
+  { href: "/tickets", label: "Tickets" },
   { href: "/about", label: "About Morocco 2030" },
 ];
 
@@ -17,18 +18,18 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
+  const { user, isAdmin, signOut, isLoading } = useSupabaseAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
   const handleDashboard = () => {
-    if (session.userRole === "admin") {
+    if (isAdmin) {
       navigate("/admin");
     } else {
-      navigate("/client");
+      navigate("/my-tickets");
     }
   };
 
@@ -65,7 +66,9 @@ export const Navbar = () => {
 
           {/* Auth Buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            {session.isLoggedIn ? (
+            {isLoading ? (
+              <div className="w-20 h-8 bg-muted rounded animate-pulse" />
+            ) : user ? (
               <>
                 <Button
                   variant="ghost"
@@ -74,7 +77,7 @@ export const Navbar = () => {
                   className="flex items-center gap-2"
                 >
                   <User size={16} />
-                  Dashboard
+                  {isAdmin ? "Admin" : "My Tickets"}
                 </Button>
                 <Button
                   variant="outline"
@@ -142,7 +145,7 @@ export const Navbar = () => {
               ))}
               {/* Mobile Auth Buttons */}
               <div className="pt-4 border-t border-border mt-4 space-y-2">
-                {session.isLoggedIn ? (
+                {user ? (
                   <>
                     <button
                       onClick={() => {
@@ -153,7 +156,7 @@ export const Navbar = () => {
                     >
                       <span className="flex items-center justify-center gap-2">
                         <User size={16} />
-                        Dashboard
+                        {isAdmin ? "Admin Dashboard" : "My Tickets"}
                       </span>
                     </button>
                     <button
