@@ -102,6 +102,7 @@ const SeatSelection = () => {
 
     const blocks = ["A", "B", "C", "D", "E", "F"];
     const seatsToInsert: any[] = [];
+    let seatIndex = 0;
 
     blocks.forEach((block, blockIndex) => {
       const category = categories[blockIndex % categories.length];
@@ -109,8 +110,10 @@ const SeatSelection = () => {
       
       rows.forEach((row) => {
         for (let seatNum = 1; seatNum <= 5; seatNum++) {
-          // Random status with 80% available, 20% sold
-          const status = Math.random() > 0.2 ? "available" : "sold";
+          // Exactly 50% available, 50% sold (alternating)
+          const status = seatIndex % 2 === 0 ? "available" : "sold";
+          seatIndex++;
+          
           const price = category.min_price + 
             Math.floor(Math.random() * (category.max_price - category.min_price));
 
