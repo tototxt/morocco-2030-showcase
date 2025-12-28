@@ -9,7 +9,6 @@ interface CategoryLegendProps {
   selectedCategory?: string | null;
   onCategorySelect?: (categoryId: string | null) => void;
   onContinue?: () => void;
-  hasSelectedSeats?: boolean;
 }
 
 // Block mapping for each category (which blocks belong to which category)
@@ -28,7 +27,6 @@ export const CategoryLegend = ({
   selectedCategory, 
   onCategorySelect,
   onContinue,
-  hasSelectedSeats = false,
 }: CategoryLegendProps) => {
   const handleCategoryClick = (categoryId: string) => {
     if (!onCategorySelect) return;
@@ -49,9 +47,9 @@ export const CategoryLegend = ({
 
   return (
     <div className="bg-card rounded-2xl p-6 shadow-lg">
-      <h3 className="font-display text-lg font-bold mb-2">Ticket Categories</h3>
+      <h3 className="font-display text-lg font-bold mb-2">Select Ticket Category</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Click a category to filter seats, or select directly from the map
+        Click a category to select your ticket type
       </p>
 
       {/* Mini Stadium Map - Shows when a category is selected */}
@@ -62,6 +60,9 @@ export const CategoryLegend = ({
           exit={{ opacity: 0, height: 0 }}
           className="mb-6 pb-6 border-b"
         >
+          <p className="text-sm font-medium text-center mb-2 text-primary">
+            Your seats will be in the highlighted section
+          </p>
           <MiniStadiumMap 
             selectedBlocks={selectedBlocks}
             highlightColor={selectedColor}
@@ -124,12 +125,12 @@ export const CategoryLegend = ({
           onClick={() => onCategorySelect?.(null)}
           className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-primary transition-colors"
         >
-          Clear filter - Show all categories
+          Clear selection
         </motion.button>
       )}
 
-      {/* Continue Button */}
-      {hasSelectedSeats && onContinue && (
+      {/* Continue Button - Shows when a category is selected */}
+      {selectedCategory && onContinue && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -140,7 +141,7 @@ export const CategoryLegend = ({
             className="w-full bg-primary hover:bg-primary/90"
             size="lg"
           >
-            Continue to Review
+            Continue to Ticket Selection
             <ArrowRight size={20} className="ml-2" />
           </Button>
         </motion.div>

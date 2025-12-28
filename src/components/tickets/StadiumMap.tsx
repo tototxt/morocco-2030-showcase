@@ -1,22 +1,16 @@
 import { motion } from "framer-motion";
-import { Eye, DollarSign } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Seat, TicketCategory } from "@/types/tickets";
 
 interface StadiumMapProps {
   seats: Seat[];
   categories: TicketCategory[];
-  selectedSeats: Seat[];
-  onSeatSelect: (seat: Seat) => void;
-  maxSelectable: number;
   selectedCategory?: string | null;
 }
 
 export const StadiumMap = ({
   seats,
   categories,
-  selectedSeats,
-  onSeatSelect,
-  maxSelectable,
   selectedCategory,
 }: StadiumMapProps) => {
   // Group seats by block for stadium layout
@@ -36,16 +30,6 @@ export const StadiumMap = ({
     return cat?.name || "Standard";
   };
 
-  const isSeatSelected = (seatId: string) => {
-    return selectedSeats.some((s) => s.id === seatId);
-  };
-
-  const handleSeatClick = (seat: Seat) => {
-    if (seat.status === "sold") return;
-    if (!isSeatSelected(seat.id) && selectedSeats.length >= maxSelectable) return;
-    onSeatSelect(seat);
-  };
-
   // Calculate availability percentage for each block
   const getBlockAvailability = (block: string) => {
     const blockSeats = getSeatsByBlock(block);
@@ -62,8 +46,13 @@ export const StadiumMap = ({
 
   return (
     <div className="bg-card rounded-2xl p-6 shadow-lg">
-      {/* Stadium SVG Visualization */}
-      <div className="relative w-full max-w-2xl mx-auto mb-8">
+      <h4 className="font-semibold text-lg mb-2">Stadium Overview</h4>
+      <p className="text-sm text-muted-foreground mb-4">
+        Seat availability by section - select a category below to continue
+      </p>
+
+      {/* Stadium SVG Visualization - Presentation Only */}
+      <div className="relative w-full max-w-2xl mx-auto">
         <svg viewBox="0 0 400 300" className="w-full h-auto">
           {/* Field */}
           <rect x="100" y="100" width="200" height="100" rx="10" fill="#22c55e" opacity="0.3" />
@@ -75,8 +64,8 @@ export const StadiumMap = ({
           <rect x="110" y="130" width="30" height="40" fill="none" stroke="#fff" strokeWidth="2" opacity="0.5" />
           <rect x="260" y="130" width="30" height="40" fill="none" stroke="#fff" strokeWidth="2" opacity="0.5" />
 
-          {/* Blocks around the stadium */}
-          {blocks.map((block, index) => {
+          {/* Blocks around the stadium - presentation only, not clickable */}
+          {blocks.map((block) => {
             const availability = getBlockAvailability(block);
             const lowestPrice = getLowestPrice(block);
             const blockSeats = getSeatsByBlock(block);
@@ -106,22 +95,13 @@ export const StadiumMap = ({
                 x = 0; y = 0; width = 50; height = 50;
             }
 
-            const hasSelectedSeats = blockSeats.some((s) => isSeatSelected(s.id));
             const avgColor = blockSeats.length > 0 ? getCategoryColor(blockSeats[0].category_id) : "#22c55e";
             const blockCategoryId = blockSeats.length > 0 ? blockSeats[0].category_id : null;
             const isHighlighted = selectedCategory && blockCategoryId === selectedCategory;
             const isDimmed = selectedCategory && blockCategoryId !== selectedCategory;
 
-            // Handle block click - select first available seat
-            const handleBlockClick = () => {
-              const availableSeat = blockSeats.find((s) => s.status === "available" && !isSeatSelected(s.id));
-              if (availableSeat && selectedSeats.length < maxSelectable) {
-                onSeatSelect(availableSeat);
-              }
-            };
-
             return (
-              <g key={block} onClick={handleBlockClick} style={{ cursor: blockSeats.length > 0 && availability > 0 ? "pointer" : "default" }}>
+              <g key={block}>
                 <motion.rect
                   x={x}
                   y={y}
@@ -130,9 +110,8 @@ export const StadiumMap = ({
                   rx="8"
                   fill={avgColor}
                   opacity={isDimmed ? 0.2 : isHighlighted ? 1 : availability > 50 ? 0.7 : availability > 20 ? 0.5 : 0.3}
-                  stroke={hasSelectedSeats ? "#fbbf24" : isHighlighted ? "#fff" : "none"}
-                  strokeWidth={hasSelectedSeats ? 3 : isHighlighted ? 2 : 0}
-                  whileHover={{ opacity: isDimmed ? 0.3 : 1, scale: 1.02 }}
+                  stroke={isHighlighted ? "#fff" : "none"}
+                  strokeWidth={isHighlighted ? 2 : 0}
                   animate={{ 
                     opacity: isDimmed ? 0.2 : isHighlighted ? 1 : availability > 50 ? 0.7 : availability > 20 ? 0.5 : 0.3,
                     scale: isHighlighted ? 1.02 : 1
@@ -177,72 +156,15 @@ export const StadiumMap = ({
         </div>
       </div>
 
-      {/* Seat Grid */}
-      <div className="space-y-4">
-        <h4 className="font-semibold text-lg">Select Your Seats</h4>
-        <p className="text-sm text-muted-foreground">
-          Click on available seats to select (max {maxSelectable})
-        </p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {blocks.map((block) => {
-            const blockSeats = getSeatsByBlock(block);
-            if (blockSeats.length === 0) return null;
-
-            return (
-              <div key={block} className="bg-muted/50 rounded-xl p-4">
-                <h5 className="font-medium mb-3 flex items-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: getCategoryColor(blockSeats[0].category_id) }}
-                  />
-                  Block {block} - {getCategoryName(blockSeats[0].category_id)}
-                </h5>
-                <div className="grid grid-cols-5 gap-1">
-                  {blockSeats.slice(0, 20).map((seat) => (
-                    <motion.button
-                      key={seat.id}
-                      onClick={() => handleSeatClick(seat)}
-                      disabled={seat.status === "sold"}
-                      whileHover={{ scale: seat.status !== "sold" ? 1.2 : 1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className={`w-6 h-6 rounded text-[8px] font-bold transition-colors ${
-                        seat.status === "sold"
-                          ? "bg-destructive/50 text-destructive-foreground cursor-not-allowed"
-                          : isSeatSelected(seat.id)
-                          ? "bg-morocco-gold text-foreground ring-2 ring-morocco-gold ring-offset-2"
-                          : "bg-secondary/20 hover:bg-secondary/40 text-foreground"
-                      }`}
-                      title={`${seat.row_number}${seat.seat_number} - ${seat.price} MAD`}
-                    >
-                      {seat.seat_number}
-                    </motion.button>
-                  ))}
-                </div>
-                {blockSeats.length > 20 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    +{blockSeats.length - 20} more seats
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-6 pt-6 border-t">
         <div className="flex items-center gap-2 text-sm">
-          <div className="w-4 h-4 rounded bg-secondary/30" />
+          <div className="w-4 h-4 rounded bg-secondary/50" />
           <span>Available</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <div className="w-4 h-4 rounded bg-morocco-gold" />
-          <span>Selected</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
           <div className="w-4 h-4 rounded bg-destructive/50" />
-          <span>Sold</span>
+          <span>Sold Out</span>
         </div>
       </div>
     </div>

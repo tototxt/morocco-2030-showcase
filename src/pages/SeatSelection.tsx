@@ -6,11 +6,10 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { StadiumMap } from "@/components/tickets/StadiumMap";
 import { CategoryLegend } from "@/components/tickets/CategoryLegend";
-import { CartSummary } from "@/components/tickets/CartSummary";
 import { MatchHeader } from "@/components/tickets/MatchHeader";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Match, TicketCategory, Seat, CartItem } from "@/types/tickets";
+import { Match, TicketCategory, Seat } from "@/types/tickets";
 import { toast } from "sonner";
 
 const MAX_TICKETS_PER_USER = 4;
@@ -23,8 +22,6 @@ const SeatSelection = () => {
   const [match, setMatch] = useState<Match | null>(null);
   const [categories, setCategories] = useState<TicketCategory[]>([]);
   const [seats, setSeats] = useState<Seat[]>([]);
-  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [userTicketCount, setUserTicketCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -133,61 +130,44 @@ const SeatSelection = () => {
     await supabase.from("seats").insert(seatsToInsert);
   };
 
-  const handleSeatSelect = (seat: Seat) => {
-    const isSelected = selectedSeats.some((s) => s.id === seat.id);
-    const remainingAllowance = MAX_TICKETS_PER_USER - userTicketCount;
-
-    if (isSelected) {
-      // Deselect
-      setSelectedSeats(selectedSeats.filter((s) => s.id !== seat.id));
-      setCartItems(cartItems.filter((item) => item.seat.id !== seat.id));
-    } else {
-      // Check limit
-      if (selectedSeats.length >= remainingAllowance) {
-        toast.error(`You can only purchase ${remainingAllowance} more ticket(s)`);
-        return;
-      }
-
-      const category = categories.find((c) => c.id === seat.category_id);
-      if (category) {
-        setSelectedSeats([...selectedSeats, seat]);
-        setCartItems([...cartItems, { seat, category }]);
-      }
+  const handleContinue = () => {
+    if (!selectedCategory) {
+      toast.error("Please select a ticket category first");
+      return;
     }
-  };
 
-  const handleRemoveFromCart = (seatId: string) => {
-    setSelectedSeats(selectedSeats.filter((s) => s.id !== seatId));
-    setCartItems(cartItems.filter((item) => item.seat.id !== seatId));
-  };
+    // Get an available seat from the selected category
+    const categorySeats = seats.filter(
+      (s) => s.category_id === selectedCategory && s.status === "available"
+    );
+    
+    if (categorySeats.length === 0) {
+      toast.error("No available seats in this category");
+      return;
+    }
 
-  const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      toast.error("Please select at least one seat");
+    // Auto-select a seat from the category
+    const selectedSeat = categorySeats[0];
+    const category = categories.find((c) => c.id === selectedCategory);
+    
+    if (!category) {
+      toast.error("Category not found");
       return;
     }
 
     // Store cart in sessionStorage for review page
     sessionStorage.setItem("ticketCart", JSON.stringify({
       match,
-      items: cartItems,
+      items: [{ seat: selectedSeat, category }],
     }));
 
     navigate("/tickets/review");
-  };
-
-  const handleContinue = () => {
-    handleCheckout();
   };
 
   const handleCategorySelect = (categoryId: string | null) => {
     setSelectedCategory(categoryId);
   };
 
-  // Filter seats by selected category
-  const filteredSeats = selectedCategory 
-    ? seats.filter((s) => s.category_id === selectedCategory)
-    : seats;
 
   if (authLoading || isLoading) {
     return (
@@ -231,35 +211,23 @@ const SeatSelection = () => {
       {/* Main Content */}
       <section className="py-8">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Stadium Map & Categories */}
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Stadium Map - Presentation Only */}
+            <div>
               <StadiumMap
-                seats={filteredSeats}
+                seats={seats}
                 categories={categories}
-                selectedSeats={selectedSeats}
-                onSeatSelect={handleSeatSelect}
-                maxSelectable={remainingAllowance}
                 selectedCategory={selectedCategory}
               />
+            </div>
+            
+            {/* Category Selection */}
+            <div>
               <CategoryLegend 
                 categories={categories} 
                 selectedCategory={selectedCategory}
                 onCategorySelect={handleCategorySelect}
                 onContinue={handleContinue}
-                hasSelectedSeats={cartItems.length > 0}
-              />
-            </div>
-
-            {/* Cart Sidebar */}
-            <div>
-              <CartSummary
-                match={match}
-                items={cartItems}
-                onRemove={handleRemoveFromCart}
-                onCheckout={handleCheckout}
-                userTicketCount={userTicketCount}
-                maxTickets={MAX_TICKETS_PER_USER}
               />
             </div>
           </div>
