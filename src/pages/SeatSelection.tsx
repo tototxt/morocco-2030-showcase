@@ -110,9 +110,8 @@ const SeatSelection = () => {
       
       rows.forEach((row) => {
         for (let seatNum = 1; seatNum <= 5; seatNum++) {
-          // Exactly 50% available, 50% sold (alternating)
-          const status = seatIndex % 2 === 0 ? "available" : "sold";
-          seatIndex++;
+          // All seats available for demo
+          const status = "available";
           
           const price = category.min_price + 
             Math.floor(Math.random() * (category.max_price - category.min_price));
