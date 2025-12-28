@@ -15,6 +15,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import TicketStore from "./pages/TicketStore";
 import SeatSelection from "./pages/SeatSelection";
+import TicketReview from "./pages/TicketReview";
+import PaymentSelection from "./pages/PaymentSelection";
+import PurchaseConfirmation from "./pages/PurchaseConfirmation";
 import Checkout from "./pages/Checkout";
 import MyTickets from "./pages/MyTickets";
 import NotFound from "./pages/NotFound";
@@ -40,6 +43,9 @@ const App = () => (
             <Route path="/client" element={<ClientDashboard />} />
             <Route path="/tickets" element={<TicketStore />} />
             <Route path="/tickets/select/:matchId" element={<SeatSelection />} />
+            <Route path="/tickets/review" element={<TicketReview />} />
+            <Route path="/tickets/payment" element={<PaymentSelection />} />
+            <Route path="/tickets/confirmation" element={<PurchaseConfirmation />} />
             <Route path="/tickets/checkout" element={<Checkout />} />
             <Route path="/my-tickets" element={<MyTickets />} />
             <Route path="*" element={<NotFound />} />

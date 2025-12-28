@@ -1,27 +1,51 @@
 import { motion } from "framer-motion";
 import { TicketCategory } from "@/types/tickets";
-import { Check } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
+import { MiniStadiumMap } from "./MiniStadiumMap";
+import { Button } from "@/components/ui/button";
 
 interface CategoryLegendProps {
   categories: TicketCategory[];
   selectedCategory?: string | null;
   onCategorySelect?: (categoryId: string | null) => void;
+  onContinue?: () => void;
+  hasSelectedSeats?: boolean;
 }
+
+// Block mapping for each category (which blocks belong to which category)
+const categoryBlockMapping: Record<string, string[]> = {
+  "Category 1": ["A"],
+  "Category 2": ["B", "D"],
+  "Category 3": ["C"],
+  "Category 4": ["E", "F"],
+  "VIP": ["A"],
+  "Standard": ["B", "C", "D"],
+  "Economy": ["E", "F"],
+};
 
 export const CategoryLegend = ({ 
   categories, 
   selectedCategory, 
-  onCategorySelect 
+  onCategorySelect,
+  onContinue,
+  hasSelectedSeats = false,
 }: CategoryLegendProps) => {
   const handleCategoryClick = (categoryId: string) => {
     if (!onCategorySelect) return;
     
     if (selectedCategory === categoryId) {
-      onCategorySelect(null); // Deselect if already selected
+      onCategorySelect(null);
     } else {
       onCategorySelect(categoryId);
     }
   };
+
+  // Get the selected category object
+  const selectedCategoryObj = categories.find(c => c.id === selectedCategory);
+  const selectedBlocks = selectedCategoryObj 
+    ? categoryBlockMapping[selectedCategoryObj.name] || ["A", "B"]
+    : [];
+  const selectedColor = selectedCategoryObj?.color || "#22c55e";
 
   return (
     <div className="bg-card rounded-2xl p-6 shadow-lg">
@@ -29,6 +53,22 @@ export const CategoryLegend = ({
       <p className="text-sm text-muted-foreground mb-4">
         Click a category to filter seats, or select directly from the map
       </p>
+
+      {/* Mini Stadium Map - Shows when a category is selected */}
+      {selectedCategory && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mb-6 pb-6 border-b"
+        >
+          <MiniStadiumMap 
+            selectedBlocks={selectedBlocks}
+            highlightColor={selectedColor}
+          />
+        </motion.div>
+      )}
+
       <div className="space-y-3">
         {categories.map((category, index) => {
           const isSelected = selectedCategory === category.id;
@@ -86,6 +126,24 @@ export const CategoryLegend = ({
         >
           Clear filter - Show all categories
         </motion.button>
+      )}
+
+      {/* Continue Button */}
+      {hasSelectedSeats && onContinue && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 pt-6 border-t"
+        >
+          <Button
+            onClick={onContinue}
+            className="w-full bg-primary hover:bg-primary/90"
+            size="lg"
+          >
+            Continue to Review
+            <ArrowRight size={20} className="ml-2" />
+          </Button>
+        </motion.div>
       )}
     </div>
   );
