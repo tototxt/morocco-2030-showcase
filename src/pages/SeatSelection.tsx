@@ -167,13 +167,17 @@ const SeatSelection = () => {
       return;
     }
 
-    // Store cart in sessionStorage for checkout page
+    // Store cart in sessionStorage for review page
     sessionStorage.setItem("ticketCart", JSON.stringify({
       match,
       items: cartItems,
     }));
 
-    navigate("/tickets/checkout");
+    navigate("/tickets/review");
+  };
+
+  const handleContinue = () => {
+    handleCheckout();
   };
 
   const handleCategorySelect = (categoryId: string | null) => {
@@ -242,6 +246,8 @@ const SeatSelection = () => {
                 categories={categories} 
                 selectedCategory={selectedCategory}
                 onCategorySelect={handleCategorySelect}
+                onContinue={handleContinue}
+                hasSelectedSeats={cartItems.length > 0}
               />
             </div>
 
