@@ -13,8 +13,9 @@ interface CheckoutFormProps {
   items: CartItem[];
   holderName: string;
   holderEmail: string;
-  onSubmit: (paymentMethod: string) => void;
+  onSubmit: (paymentMethod: string, cardDetails?: { cardNumber: string; expiry: string; cvv: string }) => void;
   isProcessing: boolean;
+  virtualCardBalance?: number;
 }
 
 const paymentMethods = [
@@ -51,6 +52,7 @@ export const CheckoutForm = ({
   holderEmail,
   onSubmit,
   isProcessing,
+  virtualCardBalance,
 }: CheckoutFormProps) => {
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [cardNumber, setCardNumber] = useState("");
@@ -58,10 +60,16 @@ export const CheckoutForm = ({
   const [cvv, setCvv] = useState("");
 
   const total = items.reduce((sum, item) => sum + item.seat.price, 0);
+  const totalInCents = total * 100;
+  const hasInsufficientBalance = virtualCardBalance !== undefined && totalInCents > virtualCardBalance;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(paymentMethod);
+    if (paymentMethod === "card") {
+      onSubmit(paymentMethod, { cardNumber, expiry, cvv });
+    } else {
+      onSubmit(paymentMethod);
+    }
   };
 
   return (
@@ -199,6 +207,11 @@ export const CheckoutForm = ({
             <p className="text-xs text-muted-foreground">
               Test card: 4242 4242 4242 4242 | Exp: 12/30 | CVV: 123
             </p>
+            {hasInsufficientBalance && (
+              <p className="text-xs text-destructive font-medium mt-2">
+                ⚠️ Insufficient virtual balance. Available: {((virtualCardBalance || 0) / 100).toFixed(2)} MAD
+              </p>
+            )}
           </motion.div>
         )}
 

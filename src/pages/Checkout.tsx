@@ -6,8 +6,10 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CheckoutForm } from "@/components/tickets/CheckoutForm";
 import { DigitalTicket } from "@/components/tickets/DigitalTicket";
+import { TestModeBanner } from "@/components/tickets/TestModeBanner";
 import { Button } from "@/components/ui/button";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useVirtualCard } from "@/hooks/useVirtualCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Match, CartItem, Purchase } from "@/types/tickets";
 import { toast } from "sonner";
@@ -15,6 +17,7 @@ import { toast } from "sonner";
 const Checkout = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useSupabaseAuth();
+  const { card, processPayment, formatBalance } = useVirtualCard(user?.id);
 
   const [cartData, setCartData] = useState<{ match: Match; items: CartItem[] } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -72,14 +75,41 @@ const Checkout = () => {
     return `${prefix}-${timestamp}-${random}`;
   };
 
-  const handleSubmit = async (paymentMethod: string) => {
+  const handleSubmit = async (paymentMethod: string, cardDetails?: { cardNumber: string; expiry: string; cvv: string }) => {
     if (!cartData || !user || !userProfile) return;
 
     setIsProcessing(true);
+    const total = cartData.items.reduce((sum, item) => sum + item.seat.price, 0);
+    const totalInCents = total * 100; // Convert to cents for virtual card
 
     try {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Process virtual payment if card method
+      if (paymentMethod === "card" && cardDetails) {
+        const ticketReference = `WC2030-${Date.now().toString(36).toUpperCase()}`;
+        const paymentResult = await processPayment(
+          cardDetails.cardNumber,
+          cardDetails.expiry,
+          cardDetails.cvv,
+          totalInCents,
+          ticketReference,
+          `Ticket purchase: ${cartData.match.home_team} vs ${cartData.match.away_team}`
+        );
+
+        if (!paymentResult.success) {
+          if (paymentResult.error === "Insufficient balance") {
+            toast.error(`Insufficient balance. Available: ${formatBalance(paymentResult.available_balance || 0)} MAD, Required: ${formatBalance(paymentResult.required_amount || 0)} MAD`);
+          } else {
+            toast.error(paymentResult.error || "Payment failed");
+          }
+          setIsProcessing(false);
+          return;
+        }
+
+        toast.success(`Payment successful! New balance: ${formatBalance(paymentResult.balance_after || 0)} MAD`);
+      } else {
+        // Simulate other payment methods
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
 
       const purchasesToCreate = cartData.items.map((item) => ({
         user_id: user.id,
@@ -183,6 +213,9 @@ const Checkout = () => {
         <div className="container mx-auto px-4">
           {purchaseComplete ? (
             <div className="space-y-8">
+              {/* Test Mode Banner */}
+              <TestModeBanner balance={card?.balance} currency={card?.currency} />
+
               {/* Success Message */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -227,6 +260,9 @@ const Checkout = () => {
             </div>
           ) : (
             <div className="max-w-2xl mx-auto">
+              {/* Test Mode Banner */}
+              <TestModeBanner balance={card?.balance} currency={card?.currency} />
+
               <CheckoutForm
                 match={cartData.match}
                 items={cartData.items}
@@ -234,6 +270,7 @@ const Checkout = () => {
                 holderEmail={userProfile.email}
                 onSubmit={handleSubmit}
                 isProcessing={isProcessing}
+                virtualCardBalance={card?.balance}
               />
             </div>
           )}

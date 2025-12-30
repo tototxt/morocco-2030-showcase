@@ -248,6 +248,92 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_cards: {
+        Row: {
+          balance: number
+          card_number_hash: string
+          created_at: string
+          currency: string
+          expiry_date: string
+          id: string
+          masked_card_number: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          card_number_hash: string
+          created_at?: string
+          currency?: string
+          expiry_date?: string
+          id?: string
+          masked_card_number?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          card_number_hash?: string
+          created_at?: string
+          currency?: string
+          expiry_date?: string
+          id?: string
+          masked_card_number?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      virtual_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          card_id: string
+          created_at: string
+          description: string | null
+          id: string
+          reference: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          card_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          card_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "virtual_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -260,6 +346,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      process_virtual_payment: {
+        Args: {
+          p_amount: number
+          p_card_number: string
+          p_cvv: string
+          p_description?: string
+          p_expiry: string
+          p_reference: string
+          p_user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
