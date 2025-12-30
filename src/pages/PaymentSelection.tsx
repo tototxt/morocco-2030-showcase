@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CreditCard, Building, Smartphone, Ticket, ChevronRight, Shield } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { TestModeBanner } from "@/components/tickets/TestModeBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useVirtualCard } from "@/hooks/useVirtualCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Match, CartItem, Purchase } from "@/types/tickets";
+import { Match, CartItem } from "@/types/tickets";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -47,6 +49,7 @@ const paymentMethods = [
 const PaymentSelection = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useSupabaseAuth();
+  const { card, processPayment, formatBalance } = useVirtualCard(user?.id);
 
   const [cartData, setCartData] = useState<{ match: Match; items: CartItem[] } | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
@@ -111,10 +114,36 @@ const PaymentSelection = () => {
     if (!selectedMethod || !cartData || !user || !userProfile) return;
 
     setIsProcessing(true);
+    const totalInCents = total * 100;
 
     try {
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Process virtual payment if card method
+      if (selectedMethod === "card") {
+        const ticketReference = `WC2030-${Date.now().toString(36).toUpperCase()}`;
+        const paymentResult = await processPayment(
+          cardNumber,
+          expiry,
+          cvv,
+          totalInCents,
+          ticketReference,
+          `Ticket purchase: ${cartData.match.home_team} vs ${cartData.match.away_team}`
+        );
+
+        if (!paymentResult.success) {
+          if (paymentResult.error === "Insufficient balance") {
+            toast.error(`Insufficient balance. Available: ${formatBalance(paymentResult.available_balance || 0)} MAD, Required: ${formatBalance(paymentResult.required_amount || 0)} MAD`);
+          } else {
+            toast.error(paymentResult.error || "Payment failed");
+          }
+          setIsProcessing(false);
+          return;
+        }
+
+        toast.success(`Payment successful! New balance: ${formatBalance(paymentResult.balance_after || 0)} MAD`);
+      } else {
+        // Simulate other payment methods
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
 
       const purchasesToCreate = cartData.items.map((item) => ({
         user_id: user.id,
@@ -212,6 +241,11 @@ const PaymentSelection = () => {
       {/* Content */}
       <section className="py-12">
         <div className="container mx-auto px-4">
+          {/* Test Mode Banner */}
+          <div className="max-w-5xl mx-auto mb-6">
+            <TestModeBanner balance={card?.balance} currency={card?.currency} />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Left: Payment Methods */}
             <div className="lg:col-span-2 space-y-6">
