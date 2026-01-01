@@ -17,7 +17,7 @@ interface VerifyResult {
 interface UseFaceAPIResult {
   isLoading: boolean;
   error: string | null;
-  enrollFace: (userId: string, purchaseId: string, imageBase64: string) => Promise<EnrollResult>;
+  enrollFace: (userId: string, purchaseId: string | null, imageBase64: string) => Promise<EnrollResult>;
   verifyFace: (userId: string, imageBase64: string) => Promise<VerifyResult>;
 }
 
@@ -30,7 +30,7 @@ export const useFaceAPI = (): UseFaceAPIResult => {
 
   const enrollFace = useCallback(async (
     userId: string,
-    purchaseId: string,
+    purchaseId: string | null,
     imageBase64: string
   ): Promise<EnrollResult> => {
     setIsLoading(true);
@@ -45,14 +45,26 @@ export const useFaceAPI = (): UseFaceAPIResult => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Store enrollment record in database
+      // purchase_id is nullable - it will be linked after payment completes
+      const insertData: {
+        user_id: string;
+        purchase_id?: string | null;
+        face_image_url: string;
+        is_verified: boolean;
+      } = {
+        user_id: userId,
+        face_image_url: imageBase64.substring(0, 100) + "...", // Store placeholder, not actual image
+        is_verified: false,
+      };
+      
+      // Only include purchase_id if it's a valid UUID
+      if (purchaseId) {
+        insertData.purchase_id = purchaseId;
+      }
+
       const { data, error: dbError } = await supabase
         .from("face_enrollments")
-        .insert({
-          user_id: userId,
-          purchase_id: purchaseId,
-          face_image_url: imageBase64.substring(0, 100) + "...", // Store placeholder, not actual image
-          is_verified: false,
-        })
+        .insert(insertData)
         .select()
         .single();
 
