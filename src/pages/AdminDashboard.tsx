@@ -11,6 +11,7 @@ import {
   Calendar,
   Ticket,
   DollarSign,
+  ScanFace,
 } from "lucide-react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ interface PurchaseWithDetails {
   payment_method: string;
   payment_status: string;
   created_at: string;
+  user_id: string;
   matches: {
     home_team: string;
     away_team: string;
@@ -55,10 +57,20 @@ interface PurchaseWithDetails {
   } | null;
 }
 
+interface FaceEnrollment {
+  id: string;
+  user_id: string;
+  purchase_id: string | null;
+  is_verified: boolean;
+  last_verification_result: string | null;
+  last_verification_at: string | null;
+}
+
 const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [purchases, setPurchases] = useState<PurchaseWithDetails[]>([]);
+  const [faceEnrollments, setFaceEnrollments] = useState<FaceEnrollment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const { user, isAdmin, signOut, isLoading: authLoading } = useSupabaseAuth();
@@ -89,11 +101,27 @@ const AdminDashboard = () => {
         .order("created_at", { ascending: false });
       
       setPurchases(purchaseData || []);
+
+      // Fetch face enrollments
+      const { data: enrollmentData } = await supabase
+        .from("face_enrollments")
+        .select("*");
+      
+      setFaceEnrollments(enrollmentData || []);
+      
       setIsLoading(false);
     };
 
     fetchData();
   }, [user, isAdmin]);
+
+  // Helper to check if a purchase has face enrollment
+  const getFaceEnrollmentStatus = (purchase: PurchaseWithDetails) => {
+    const enrollment = faceEnrollments.find(
+      (e) => e.user_id === purchase.user_id
+    );
+    return enrollment;
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -285,6 +313,7 @@ const AdminDashboard = () => {
                       <TableHead>Category</TableHead>
                       <TableHead>Seat</TableHead>
                       <TableHead>Price</TableHead>
+                      <TableHead>Face ID</TableHead>
                       <TableHead>Payment</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
@@ -292,7 +321,7 @@ const AdminDashboard = () => {
                   <TableBody>
                     {filteredPurchases.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12">
+                        <TableCell colSpan={10} className="text-center py-12">
                           <div className="flex flex-col items-center gap-2 text-muted-foreground">
                             <Ticket size={40} className="opacity-50" />
                             <p>No purchases found</p>
@@ -340,6 +369,32 @@ const AdminDashboard = () => {
                           </TableCell>
                           <TableCell className="font-bold">
                             {purchase.price} MAD
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const enrollment = getFaceEnrollmentStatus(purchase);
+                              if (!enrollment) {
+                                return (
+                                  <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded flex items-center gap-1">
+                                    <ScanFace size={12} />
+                                    No
+                                  </span>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded flex items-center gap-1">
+                                    <ScanFace size={12} />
+                                    Yes
+                                  </span>
+                                  {enrollment.last_verification_result && (
+                                    <span className={`text-xs ${enrollment.last_verification_result === 'verified' ? 'text-secondary' : 'text-destructive'}`}>
+                                      Last: {enrollment.last_verification_result}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded capitalize">

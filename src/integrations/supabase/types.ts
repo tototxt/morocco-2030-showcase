@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      face_enrollments: {
+        Row: {
+          created_at: string
+          enrolled_at: string
+          face_image_url: string
+          id: string
+          is_verified: boolean
+          last_verification_at: string | null
+          last_verification_result: string | null
+          purchase_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enrolled_at?: string
+          face_image_url: string
+          id?: string
+          is_verified?: boolean
+          last_verification_at?: string | null
+          last_verification_result?: string | null
+          purchase_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enrolled_at?: string
+          face_image_url?: string
+          id?: string
+          is_verified?: boolean
+          last_verification_at?: string | null
+          last_verification_result?: string | null
+          purchase_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_enrollments_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           available_seats: number
