@@ -46,10 +46,8 @@ const FaceEnrollment = () => {
       return;
     }
 
-    const cartData = JSON.parse(savedCart);
-    const purchaseRef = `pending_${cartData.match.id}_${Date.now()}`;
-
-    const result = await enrollFace(user.id, purchaseRef, capturedImage);
+    // Enroll face without a purchase_id - it will be linked after payment completes
+    const result = await enrollFace(user.id, null, capturedImage);
 
     if (result.success) {
       // Store enrollment info in session for later use
