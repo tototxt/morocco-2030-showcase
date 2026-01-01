@@ -58,7 +58,8 @@ const TicketReview = () => {
   };
 
   const handleContinue = () => {
-    navigate("/tickets/payment");
+    // Navigate to face enrollment before payment
+    navigate("/tickets/face-enrollment");
   };
 
   const total = cartData?.items.reduce((sum, item) => sum + item.seat.price, 0) || 0;
@@ -231,7 +232,7 @@ const TicketReview = () => {
                   size="lg"
                 >
                   <ShoppingCart size={20} className="mr-2" />
-                  Continue to Payment
+                  Continue to Face Enrollment
                 </Button>
               </div>
             </div>
